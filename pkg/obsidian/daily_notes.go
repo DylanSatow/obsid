@@ -68,7 +68,7 @@ func findProjectInsertionPoint(lines []string, projectsIndex int, projectName st
 }
 
 func formatProjectEntry(projectName, content string) string {
-	return fmt.Sprintf("### %s\n%s\n", projectName, content)
+	return fmt.Sprintf("### %s\n%s", projectName, content)
 }
 
 func insertLines(lines []string, index int, newLines []string) []string {

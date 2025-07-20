@@ -43,7 +43,7 @@ func FormatProjectEntry(repo *git.Repository, commits []git.Commit, files []stri
 	}
 
 	// Separator line
-	sb.WriteString("---\n\n")
+	sb.WriteString("---\n")
 
 	return sb.String()
 }
