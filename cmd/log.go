@@ -125,7 +125,7 @@ func runLog(cmd *cobra.Command, args []string) error {
 		if err := vault.CreateDailyNote(today); err != nil {
 			return fmt.Errorf("could not create daily note: %w", err)
 		}
-		fmt.Printf("📄 Created new daily note for %s\n", today.Format("Monday, January 2, 2006"))
+		fmt.Printf("Created new daily note for %s\n", today.Format("Monday, January 2, 2006"))
 	} else {
 		// Update vault's date format to match the existing note format
 		detectedFormat, err := vault.DetectDateFormat()
@@ -144,14 +144,14 @@ func runLog(cmd *cobra.Command, args []string) error {
 	}
 
 	// Success message
-	fmt.Printf("✅ Logged activity for %s\n", projectName)
-	fmt.Printf("📝 Daily note: %s\n", vault.GetDailyNotePath(today))
-	fmt.Printf("⏰ Time range: %s\n", timeRange)
+	fmt.Printf("Logged activity for %s\n", projectName)
+	fmt.Printf("Daily note: %s\n", vault.GetDailyNotePath(today))
+	fmt.Printf("Time range: %s\n", timeRange)
 	if len(commits) > 0 {
-		fmt.Printf("📦 Commits: %d\n", len(commits))
+		fmt.Printf("Commits: %d\n", len(commits))
 	}
 	if len(files) > 0 {
-		fmt.Printf("📁 Files changed: %d\n", len(files))
+		fmt.Printf("Files changed: %d\n", len(files))
 	}
 
 	return nil

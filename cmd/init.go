@@ -62,14 +62,14 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	// Auto-detect daily note settings (always attempt this)
-	fmt.Printf("🔍 Scanning vault for daily notes...\n")
+	fmt.Printf("Scanning vault for daily notes...\n")
 	
 	// Try to auto-detect date format from existing files
 	vault := obsidian.NewVault(vaultPath, dailyNotesDir, dateFormat)
 	detectedFormat, err := vault.DetectDateFormat()
 	
 	if err == nil {
-		fmt.Printf("📅 Found existing format: %s (%s directory)\n", detectedFormat, dailyNotesDir)
+		fmt.Printf("Found existing format: %s (%s directory)\n", detectedFormat, dailyNotesDir)
 		
 		if interactive {
 			fmt.Print("Use detected format? (Y/n): ")
@@ -91,16 +91,16 @@ func runInit(cmd *cobra.Command, args []string) error {
 			dateFormat = detectedFormat
 		}
 	} else {
-		fmt.Printf("⚠️  No existing daily notes found: %v\n", err)
+		fmt.Printf("No existing daily notes found: %v\n", err)
 		if interactive {
-			fmt.Printf("📝 Setting up daily note configuration...\n")
+			fmt.Printf("Setting up daily note configuration...\n")
 			var err error
 			dailyNotesDir, dateFormat, err = promptForDailyNoteConfig(vaultPath, dailyNotesDir, dateFormat)
 			if err != nil {
 				return fmt.Errorf("interactive setup failed: %w", err)
 			}
 		} else {
-			fmt.Printf("📝 Using defaults: %s directory, %s format\n", dailyNotesDir, dateFormat)
+			fmt.Printf("Using defaults: %s directory, %s format\n", dailyNotesDir, dateFormat)
 		}
 	}
 
@@ -145,14 +145,14 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("could not write config file: %w", err)
 	}
 
-	fmt.Printf("✅ Configuration initialized at: %s\n", configPath)
-	fmt.Printf("📁 Vault: %s\n", vaultPath)
-	fmt.Printf("📝 Daily notes directory: %s\n", dailyNotesDir)
-	fmt.Printf("📅 Date format: %s\n", dateFormat)
+	fmt.Printf("Configuration initialized at: %s\n", configPath)
+	fmt.Printf("Vault: %s\n", vaultPath)
+	fmt.Printf("Daily notes directory: %s\n", dailyNotesDir)
+	fmt.Printf("Date format: %s\n", dateFormat)
 	if len(projectDirs) > 0 {
-		fmt.Printf("🚀 Project directories: %v\n", projectDirs)
+		fmt.Printf("Project directories: %v\n", projectDirs)
 	}
-	fmt.Printf("\n⚡ Ready to use: obsidian-cli log\n")
+	fmt.Printf("\nReady to use: obsidian-cli log\n")
 
 	return nil
 }
@@ -160,20 +160,20 @@ func runInit(cmd *cobra.Command, args []string) error {
 func promptForDailyNoteConfig(vaultPath, currentDailyNotesDir, currentDateFormat string) (string, string, error) {
 	reader := bufio.NewReader(os.Stdin)
 	
-	fmt.Println("\n🔧 Interactive Daily Note Configuration")
+	fmt.Println("\nInteractive Daily Note Configuration")
 	fmt.Println("This will help configure obsidian-cli to work with your specific daily note setup.")
 	
 	// Scan vault for existing daily notes to suggest configuration
 	suggestions := scanVaultForDailyNotes(vaultPath)
 	if len(suggestions) > 0 {
-		fmt.Printf("\n📊 Found %d existing daily notes in your vault. Here are some patterns:\n", len(suggestions))
+		fmt.Printf("\nFound %d existing daily notes in your vault. Here are some patterns:\n", len(suggestions))
 		for i, suggestion := range suggestions[:min(5, len(suggestions))] {
 			fmt.Printf("  %d. %s\n", i+1, suggestion)
 		}
 	}
 	
 	// Ask for daily notes directory
-	fmt.Printf("\n📁 Daily notes directory (current: %s): ", currentDailyNotesDir)
+	fmt.Printf("\nDaily notes directory (current: %s): ", currentDailyNotesDir)
 	fmt.Print("Enter the folder name where your daily notes are stored (press Enter for default): ")
 	
 	dailyNotesDir, err := reader.ReadString('\n')
@@ -186,7 +186,7 @@ func promptForDailyNoteConfig(vaultPath, currentDailyNotesDir, currentDateFormat
 	}
 	
 	// Show common date format examples
-	fmt.Println("\n📅 Common daily note date formats:")
+	fmt.Println("\nCommon daily note date formats:")
 	fmt.Println("  1. YYYY-MM-DD-dddd          → 2025-07-19-Saturday")
 	fmt.Println("  2. YYYY-MM-DD               → 2025-07-19")
 	fmt.Println("  3. DD-MM-YYYY               → 19-07-2025")
@@ -230,13 +230,13 @@ func promptForDailyNoteConfig(vaultPath, currentDailyNotesDir, currentDateFormat
 	}
 	
 	// Validate the configuration
-	fmt.Printf("\n✅ Configuration Summary:\n")
-	fmt.Printf("   📁 Daily notes directory: %s\n", dailyNotesDir)
-	fmt.Printf("   📅 Date format: %s\n", dateFormat)
+	fmt.Printf("\nConfiguration Summary:\n")
+	fmt.Printf("   Daily notes directory: %s\n", dailyNotesDir)
+	fmt.Printf("   Date format: %s\n", dateFormat)
 	
 	// Show what today's note would be named
 	exampleName := formatDateExample(dateFormat)
-	fmt.Printf("   📝 Today's note would be: %s/%s.md\n", dailyNotesDir, exampleName)
+	fmt.Printf("   Today's note would be: %s/%s.md\n", dailyNotesDir, exampleName)
 	
 	fmt.Print("\nDoes this look correct? (y/N): ")
 	confirm, err := reader.ReadString('\n')
