@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -185,37 +184,7 @@ func promptForVaultPath(rl *readline.Instance) (string, error) {
 
 func setupDailyNotes(vaultPath string, rl *readline.Instance) (string, string, error) {
 	fmt.Println("Step 2: Daily Notes Configuration")
-	fmt.Println("Scanning your vault for existing daily notes...")
-
-	// First scan for existing daily notes in any directory
-	suggestions := scanVaultForDailyNotes(vaultPath)
-	
-	if len(suggestions) > 0 {
-		fmt.Printf("Found %d existing daily notes in your vault. Here are some patterns:\n", len(suggestions))
-		for i, suggestion := range suggestions[:min(5, len(suggestions))] {
-			fmt.Printf("  %d. %s\n", i+1, suggestion)
-		}
-		
-		// Try to auto-detect the most common directory and format
-		detectedDir, detectedFormat := detectDailyNotesConfig(suggestions)
-		
-		if detectedDir != "" && detectedFormat != "" {
-			fmt.Printf("\nDetected configuration:\n")
-			fmt.Printf("  Directory: %s\n", detectedDir)
-			fmt.Printf("  Format: %s\n", detectedFormat)
-			fmt.Print("Use detected configuration? (Y/n): ")
-			rl.SetPrompt("Use detected configuration? (Y/n): ")
-			response, _ := rl.Readline()
-			response = strings.TrimSpace(response)
-			if response == "" || strings.ToLower(response) == "y" || strings.ToLower(response) == "yes" {
-				return detectedDir, detectedFormat, nil
-			}
-		}
-	} else {
-		fmt.Println("No existing daily notes found.")
-	}
-
-	fmt.Println("Let's configure your daily notes setup.")
+	fmt.Println("Please configure your daily notes directory and date format.")
 	return promptForDailyNoteConfig(vaultPath, "Daily Notes", "YYYY-MM-DD-dddd", rl)
 }
 
@@ -490,56 +459,7 @@ func promptForDailyNoteConfig(vaultPath, currentDailyNotesDir, currentDateFormat
 	return dailyNotesDir, dateFormat, nil
 }
 
-func scanVaultForDailyNotes(vaultPath string) []string {
-	var suggestions []string
 
-	// Look for markdown files that might be daily notes
-	err := filepath.Walk(vaultPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return nil // Skip errors
-		}
-
-		if !info.IsDir() && strings.HasSuffix(info.Name(), ".md") {
-			// Check if filename looks like a date
-			relPath, _ := filepath.Rel(vaultPath, path)
-			if looksLikeDailyNote(info.Name()) {
-				suggestions = append(suggestions, relPath)
-			}
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return []string{}
-	}
-
-	return suggestions
-}
-
-func looksLikeDailyNote(filename string) bool {
-	name := strings.TrimSuffix(filename, ".md")
-
-	// Check for common date patterns
-	patterns := []string{
-		"2025", "2024", "2023", // Years
-		"01-", "02-", "03-", "04-", "05-", "06-", // Months
-		"07-", "08-", "09-", "10-", "11-", "12-",
-		"January", "February", "March", "April", "May", "June",
-		"July", "August", "September", "October", "November", "December",
-		"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-		"Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-		"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
-	}
-
-	for _, pattern := range patterns {
-		if strings.Contains(name, pattern) {
-			return true
-		}
-	}
-
-	return false
-}
 
 func formatDateExample(format string) string {
 	// Convert our YYYY-MM-DD format to what it would look like today
@@ -649,79 +569,4 @@ func (c *BasicFileCompleter) Do(line []rune, pos int) ([][]rune, int) {
 	return completions, len(currentPath)
 }
 
-// detectDailyNotesConfig analyzes the file paths to detect the most common directory and format
-func detectDailyNotesConfig(suggestions []string) (string, string) {
-	dirCounts := make(map[string]int)
-	formatCounts := make(map[string]int)
-	
-	for _, suggestion := range suggestions {
-		// Extract directory
-		dir := filepath.Dir(suggestion)
-		if dir == "." {
-			dir = "" // Root of vault
-		}
-		dirCounts[dir]++
-		
-		// Extract filename and try to detect format
-		filename := filepath.Base(suggestion)
-		filename = strings.TrimSuffix(filename, ".md")
-		
-		// Use the same detection logic as the vault package
-		detectedFormat := detectDateFormatFromSingleFile(filename)
-		if detectedFormat != "" {
-			formatCounts[detectedFormat]++
-		}
-	}
-	
-	// Find most common directory
-	mostCommonDir := ""
-	maxDirCount := 0
-	for dir, count := range dirCounts {
-		if count > maxDirCount {
-			maxDirCount = count
-			mostCommonDir = dir
-		}
-	}
-	
-	// Find most common format
-	mostCommonFormat := ""
-	maxFormatCount := 0
-	for format, count := range formatCounts {
-		if count > maxFormatCount {
-			maxFormatCount = count
-			mostCommonFormat = format
-		}
-	}
-	
-	// Use the detected directory, or default if empty/root
-	if mostCommonDir == "" || mostCommonDir == "." {
-		mostCommonDir = "Daily Notes"
-	}
-	
-	return mostCommonDir, mostCommonFormat
-}
 
-// detectDateFormatFromSingleFile detects the date format from a single filename
-func detectDateFormatFromSingleFile(filename string) string {
-	// Define patterns and their corresponding formats
-	patterns := map[string]string{
-		`^\d{4}-\d{2}-\d{2}-\w+$`:     "YYYY-MM-DD-dddd",    // 2025-07-20-Sunday
-		`^\d{4}-\d{2}-\d{2} \w+$`:     "YYYY-MM-DD dddd",    // 2025-07-20 Sunday
-		`^\d{4}-\d{2}-\d{2}$`:         "YYYY-MM-DD",         // 2025-07-20
-		`^\d{2}-\d{2}-\d{4}$`:         "DD-MM-YYYY",         // 20-07-2025
-		`^\d{1,2}-\d{1,2}-\d{4}$`:     "MM-DD-YYYY",         // 7-20-2025 or 07-20-2025
-		`^\d{1,2}-\d{1,2}-\d{2}$`:     "MM-DD-YY",           // 7-20-25 or 07-20-25
-		`^\d{4}/\d{2}/\d{2}$`:         "YYYY/MM/DD",         // 2025/07/20
-		`^[A-Z][a-z]+ \d{1,2}, \d{4}$`: "MMMM DD, YYYY",    // July 20, 2025
-		`^\d{1,2} [A-Z][a-z]+ \d{4}$`: "DD MMMM YYYY",      // 20 July 2025
-		`^\d{2}-\d{2}-\d{2}$`:         "YY-MM-DD",           // 25-07-20
-	}
-	
-	for pattern, format := range patterns {
-		if matched, _ := regexp.MatchString(pattern, filename); matched {
-			return format
-		}
-	}
-	
-	return ""
-}

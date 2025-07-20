@@ -139,10 +139,7 @@ func logSingleRepository(repo *git.Repository, cmd *cobra.Command) error {
 	today := time.Now()
 	createNote, _ := cmd.Flags().GetBool("create-note")
 	
-	// First try to find an existing daily note using any format
-	_, exists := vault.FindExistingDailyNote(today)
-	
-	if !exists {
+	if !vault.DailyNoteExists(today) {
 		if !createNote {
 			return fmt.Errorf("daily note does not exist for %s\n\nUse --create-note flag to create it automatically:\n  obsid log --create-note", today.Format("Monday, January 2, 2006"))
 		}
@@ -151,12 +148,6 @@ func logSingleRepository(repo *git.Repository, cmd *cobra.Command) error {
 			return fmt.Errorf("could not create daily note: %w", err)
 		}
 		fmt.Printf("Created new daily note for %s\n", today.Format("Monday, January 2, 2006"))
-	} else {
-		// Update vault's date format to match the existing note format
-		detectedFormat, err := vault.DetectDateFormat()
-		if err == nil && detectedFormat != "" && detectedFormat != vault.DateFormat {
-			vault.DateFormat = detectedFormat
-		}
 	}
 
 	// Format project entry

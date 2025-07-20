@@ -60,7 +60,6 @@ obsid config
 - **Intelligent Formatting**: Converts commits to readable accomplishments  
 - **Flexible Timeframes**: Support for `1h`, `2h30m`, `today`, `yesterday`
 - **Safe Operation**: Requires explicit permission to create daily notes
-- **Format Detection**: Auto-detects existing daily note date formats
 - **Area Categorization**: Groups changes by functional areas (frontend, backend, tests)
 
 ## Configuration
