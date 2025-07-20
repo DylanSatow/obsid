@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/DylanSatow/obsid/pkg/obsidian"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -147,9 +147,15 @@ func promptForVaultPath(reader *bufio.Reader) (string, error) {
 	}
 
 	// Expand home directory if needed
-	if vaultPath[0] == '~' {
+	if len(vaultPath) > 0 && vaultPath[0] == '~' {
 		home, _ := os.UserHomeDir()
-		vaultPath = filepath.Join(home, vaultPath[1:])
+		if len(vaultPath) == 1 {
+			vaultPath = home
+		} else if vaultPath[1] == '/' {
+			vaultPath = filepath.Join(home, vaultPath[2:])
+		} else {
+			vaultPath = filepath.Join(home, vaultPath[1:])
+		}
 	}
 
 	// Validate vault path
@@ -171,19 +177,28 @@ func setupDailyNotes(vaultPath string, reader *bufio.Reader) (string, string, er
 	fmt.Println("Step 2: Daily Notes Configuration")
 	fmt.Println("Scanning your vault for existing daily notes...")
 
-	// Try to auto-detect daily note format
-	vault := obsidian.NewVault(vaultPath, "Daily Notes", "YYYY-MM-DD-dddd")
-	detectedFormat, err := vault.DetectDateFormat()
-
-	if err == nil {
-		fmt.Printf("Found existing daily notes with format: %s\n", detectedFormat)
-		fmt.Print("Use detected format? (Y/n): ")
-		response, _ := reader.ReadString('\n')
-		response = strings.TrimSpace(response)
-		if response == "" || strings.ToLower(response) == "y" || strings.ToLower(response) == "yes" {
-			// Extract directory from detection
-			dailyNotesDir := "Daily Notes" // Default, could be enhanced to detect directory too
-			return dailyNotesDir, detectedFormat, nil
+	// First scan for existing daily notes in any directory
+	suggestions := scanVaultForDailyNotes(vaultPath)
+	
+	if len(suggestions) > 0 {
+		fmt.Printf("Found %d existing daily notes in your vault. Here are some patterns:\n", len(suggestions))
+		for i, suggestion := range suggestions[:min(5, len(suggestions))] {
+			fmt.Printf("  %d. %s\n", i+1, suggestion)
+		}
+		
+		// Try to auto-detect the most common directory and format
+		detectedDir, detectedFormat := detectDailyNotesConfig(suggestions)
+		
+		if detectedDir != "" && detectedFormat != "" {
+			fmt.Printf("\nDetected configuration:\n")
+			fmt.Printf("  Directory: %s\n", detectedDir)
+			fmt.Printf("  Format: %s\n", detectedFormat)
+			fmt.Print("Use detected configuration? (Y/n): ")
+			response, _ := reader.ReadString('\n')
+			response = strings.TrimSpace(response)
+			if response == "" || strings.ToLower(response) == "y" || strings.ToLower(response) == "yes" {
+				return detectedDir, detectedFormat, nil
+			}
 		}
 	} else {
 		fmt.Println("No existing daily notes found.")
@@ -218,9 +233,15 @@ func promptForProjectDirectories(reader *bufio.Reader) ([]string, error) {
 		dir = strings.TrimSpace(dir)
 		if dir != "" {
 			// Expand home directory if needed
-			if dir[0] == '~' {
+			if len(dir) > 0 && dir[0] == '~' {
 				home, _ := os.UserHomeDir()
-				dir = filepath.Join(home, dir[1:])
+				if len(dir) == 1 {
+					dir = home
+				} else if dir[1] == '/' {
+					dir = filepath.Join(home, dir[2:])
+				} else {
+					dir = filepath.Join(home, dir[1:])
+				}
 			}
 			projectDirs = append(projectDirs, dir)
 		}
@@ -363,15 +384,6 @@ func promptForDailyNoteConfig(vaultPath, currentDailyNotesDir, currentDateFormat
 	fmt.Println("\nInteractive Daily Note Configuration")
 	fmt.Println("This will help configure obsid to work with your specific daily note setup.")
 
-	// Scan vault for existing daily notes to suggest configuration
-	suggestions := scanVaultForDailyNotes(vaultPath)
-	if len(suggestions) > 0 {
-		fmt.Printf("\nFound %d existing daily notes in your vault. Here are some patterns:\n", len(suggestions))
-		for i, suggestion := range suggestions[:min(5, len(suggestions))] {
-			fmt.Printf("  %d. %s\n", i+1, suggestion)
-		}
-	}
-
 	// Ask for daily notes directory
 	fmt.Printf("\nDaily notes directory (current: %s): ", currentDailyNotesDir)
 	fmt.Print("Enter the folder name where your daily notes are stored (press Enter for default): ")
@@ -387,17 +399,19 @@ func promptForDailyNoteConfig(vaultPath, currentDailyNotesDir, currentDateFormat
 
 	// Show common date format examples
 	fmt.Println("\nCommon daily note date formats:")
-	fmt.Println("  1. YYYY-MM-DD-dddd          → 2025-07-19-Saturday")
-	fmt.Println("  2. YYYY-MM-DD               → 2025-07-19")
-	fmt.Println("  3. DD-MM-YYYY               → 19-07-2025")
-	fmt.Println("  4. YYYY/MM/DD               → 2025/07/19")
-	fmt.Println("  5. MMMM DD, YYYY            → July 19, 2025")
-	fmt.Println("  6. DD MMMM YYYY             → 19 July 2025")
-	fmt.Println("  7. YYYY-MM-DD dddd          → 2025-07-19 Saturday")
-	fmt.Println("  8. YY-MM-DD                 → 25-07-19")
+	fmt.Println("  1. YYYY-MM-DD-dddd          → 2025-07-20-Sunday")
+	fmt.Println("  2. YYYY-MM-DD               → 2025-07-20")
+	fmt.Println("  3. DD-MM-YYYY               → 20-07-2025")
+	fmt.Println("  4. MM-DD-YYYY               → 07-20-2025")
+	fmt.Println("  5. MM-DD-YY                 → 07-20-25")
+	fmt.Println("  6. YYYY/MM/DD               → 2025/07/20")
+	fmt.Println("  7. MMMM DD, YYYY            → July 20, 2025")
+	fmt.Println("  8. DD MMMM YYYY             → 20 July 2025")
+	fmt.Println("  9. YYYY-MM-DD dddd          → 2025-07-20 Sunday")
+	fmt.Println(" 10. YY-MM-DD                 → 25-07-20")
 
 	fmt.Printf("\nCurrent format: %s\n", currentDateFormat)
-	fmt.Print("Enter your date format (press Enter to keep current, or type a number 1-8 for common formats): ")
+	fmt.Print("Enter your date format (press Enter to keep current, or type a number 1-10 for common formats): ")
 
 	dateFormatInput, err := reader.ReadString('\n')
 	if err != nil {
@@ -416,14 +430,18 @@ func promptForDailyNoteConfig(vaultPath, currentDailyNotesDir, currentDateFormat
 	case "3":
 		dateFormat = "DD-MM-YYYY"
 	case "4":
-		dateFormat = "YYYY/MM/DD"
+		dateFormat = "MM-DD-YYYY"
 	case "5":
-		dateFormat = "MMMM DD, YYYY"
+		dateFormat = "MM-DD-YY"
 	case "6":
-		dateFormat = "DD MMMM YYYY"
+		dateFormat = "YYYY/MM/DD"
 	case "7":
-		dateFormat = "YYYY-MM-DD dddd"
+		dateFormat = "MMMM DD, YYYY"
 	case "8":
+		dateFormat = "DD MMMM YYYY"
+	case "9":
+		dateFormat = "YYYY-MM-DD dddd"
+	case "10":
 		dateFormat = "YY-MM-DD"
 	default:
 		dateFormat = dateFormatInput
@@ -508,21 +526,25 @@ func formatDateExample(format string) string {
 	// This is a simplified example - in real usage we'd use the actual date formatting
 	switch format {
 	case "YYYY-MM-DD-dddd":
-		return "2025-07-19-Saturday"
+		return "2025-07-20-Sunday"
 	case "YYYY-MM-DD":
-		return "2025-07-19"
+		return "2025-07-20"
 	case "DD-MM-YYYY":
-		return "19-07-2025"
+		return "20-07-2025"
+	case "MM-DD-YYYY":
+		return "07-20-2025"
+	case "MM-DD-YY":
+		return "07-20-25"
 	case "YYYY/MM/DD":
-		return "2025/07/19"
+		return "2025/07/20"
 	case "MMMM DD, YYYY":
-		return "July 19, 2025"
+		return "July 20, 2025"
 	case "DD MMMM YYYY":
-		return "19 July 2025"
+		return "20 July 2025"
 	case "YYYY-MM-DD dddd":
-		return "2025-07-19 Saturday"
+		return "2025-07-20 Sunday"
 	case "YY-MM-DD":
-		return "25-07-19"
+		return "25-07-20"
 	default:
 		return format // Return the format itself as an example
 	}
@@ -533,4 +555,81 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// detectDailyNotesConfig analyzes the file paths to detect the most common directory and format
+func detectDailyNotesConfig(suggestions []string) (string, string) {
+	dirCounts := make(map[string]int)
+	formatCounts := make(map[string]int)
+	
+	for _, suggestion := range suggestions {
+		// Extract directory
+		dir := filepath.Dir(suggestion)
+		if dir == "." {
+			dir = "" // Root of vault
+		}
+		dirCounts[dir]++
+		
+		// Extract filename and try to detect format
+		filename := filepath.Base(suggestion)
+		filename = strings.TrimSuffix(filename, ".md")
+		
+		// Use the same detection logic as the vault package
+		detectedFormat := detectDateFormatFromSingleFile(filename)
+		if detectedFormat != "" {
+			formatCounts[detectedFormat]++
+		}
+	}
+	
+	// Find most common directory
+	mostCommonDir := ""
+	maxDirCount := 0
+	for dir, count := range dirCounts {
+		if count > maxDirCount {
+			maxDirCount = count
+			mostCommonDir = dir
+		}
+	}
+	
+	// Find most common format
+	mostCommonFormat := ""
+	maxFormatCount := 0
+	for format, count := range formatCounts {
+		if count > maxFormatCount {
+			maxFormatCount = count
+			mostCommonFormat = format
+		}
+	}
+	
+	// Use the detected directory, or default if empty/root
+	if mostCommonDir == "" || mostCommonDir == "." {
+		mostCommonDir = "Daily Notes"
+	}
+	
+	return mostCommonDir, mostCommonFormat
+}
+
+// detectDateFormatFromSingleFile detects the date format from a single filename
+func detectDateFormatFromSingleFile(filename string) string {
+	// Define patterns and their corresponding formats
+	patterns := map[string]string{
+		`^\d{4}-\d{2}-\d{2}-\w+$`:     "YYYY-MM-DD-dddd",    // 2025-07-20-Sunday
+		`^\d{4}-\d{2}-\d{2} \w+$`:     "YYYY-MM-DD dddd",    // 2025-07-20 Sunday
+		`^\d{4}-\d{2}-\d{2}$`:         "YYYY-MM-DD",         // 2025-07-20
+		`^\d{2}-\d{2}-\d{4}$`:         "DD-MM-YYYY",         // 20-07-2025
+		`^\d{1,2}-\d{1,2}-\d{4}$`:     "MM-DD-YYYY",         // 7-20-2025 or 07-20-2025
+		`^\d{1,2}-\d{1,2}-\d{2}$`:     "MM-DD-YY",           // 7-20-25 or 07-20-25
+		`^\d{4}/\d{2}/\d{2}$`:         "YYYY/MM/DD",         // 2025/07/20
+		`^[A-Z][a-z]+ \d{1,2}, \d{4}$`: "MMMM DD, YYYY",    // July 20, 2025
+		`^\d{1,2} [A-Z][a-z]+ \d{4}$`: "DD MMMM YYYY",      // 20 July 2025
+		`^\d{2}-\d{2}-\d{2}$`:         "YY-MM-DD",           // 25-07-20
+	}
+	
+	for pattern, format := range patterns {
+		if matched, _ := regexp.MatchString(pattern, filename); matched {
+			return format
+		}
+	}
+	
+	return ""
 }

@@ -39,6 +39,10 @@ func convertDateFormatToGo(format string) string {
 		return "2006-01-02"
 	case "DD-MM-YYYY":
 		return "02-01-2006"
+	case "MM-DD-YYYY":
+		return "01-02-2006"
+	case "MM-DD-YY":
+		return "01-02-06"
 	case "YYYY/MM/DD":
 		return "2006/01/02"
 	case "MMMM DD, YYYY":
@@ -135,6 +139,8 @@ func detectDateFormatFromFiles(filenames []string) string {
 		`^\d{4}-\d{2}-\d{2} \w+$`:     "YYYY-MM-DD dddd",    // 2025-07-19 Saturday
 		`^\d{4}-\d{2}-\d{2}$`:         "YYYY-MM-DD",         // 2025-07-19
 		`^\d{2}-\d{2}-\d{4}$`:         "DD-MM-YYYY",         // 19-07-2025
+		`^\d{1,2}-\d{1,2}-\d{4}$`:     "MM-DD-YYYY",         // 7-20-2025 or 07-20-2025
+		`^\d{1,2}-\d{1,2}-\d{2}$`:     "MM-DD-YY",           // 7-20-25 or 07-20-25
 		`^\d{4}/\d{2}/\d{2}$`:         "YYYY/MM/DD",         // 2025/07/19
 		`^[A-Z][a-z]+ \d{1,2}, \d{4}$`: "MMMM DD, YYYY",    // July 19, 2025
 		`^\d{1,2} [A-Z][a-z]+ \d{4}$`: "DD MMMM YYYY",      // 19 July 2025
@@ -176,6 +182,8 @@ func (v *Vault) FindExistingDailyNote(date time.Time) (string, bool) {
 		"YYYY-MM-DD-dddd",    // 2025-07-19-Saturday
 		"YYYY-MM-DD dddd",    // 2025-07-19 Saturday
 		"DD-MM-YYYY",         // 19-07-2025
+		"MM-DD-YYYY",         // 07-20-2025
+		"MM-DD-YY",           // 07-20-25
 		"YYYY/MM/DD",         // 2025/07/19
 		"MMMM DD, YYYY",      // July 19, 2025
 		"DD MMMM YYYY",       // 19 July 2025
