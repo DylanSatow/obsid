@@ -133,29 +133,44 @@ func (v *Vault) DetectDateFormat() (string, error) {
 
 // detectDateFormatFromFiles analyzes filenames to determine date format
 func detectDateFormatFromFiles(filenames []string) string {
-	// Define patterns and their corresponding formats
+	// Define clear, unambiguous patterns first
 	patterns := map[string]string{
 		`^\d{4}-\d{2}-\d{2}-\w+$`:     "YYYY-MM-DD-dddd",    // 2025-07-19-Saturday
 		`^\d{4}-\d{2}-\d{2} \w+$`:     "YYYY-MM-DD dddd",    // 2025-07-19 Saturday
 		`^\d{4}-\d{2}-\d{2}$`:         "YYYY-MM-DD",         // 2025-07-19
-		`^\d{2}-\d{2}-\d{4}$`:         "DD-MM-YYYY",         // 19-07-2025
-		`^\d{1,2}-\d{1,2}-\d{4}$`:     "MM-DD-YYYY",         // 7-20-2025 or 07-20-2025
-		`^\d{1,2}-\d{1,2}-\d{2}$`:     "MM-DD-YY",           // 7-20-25 or 07-20-25
 		`^\d{4}/\d{2}/\d{2}$`:         "YYYY/MM/DD",         // 2025/07/19
 		`^[A-Z][a-z]+ \d{1,2}, \d{4}$`: "MMMM DD, YYYY",    // July 19, 2025
 		`^\d{1,2} [A-Z][a-z]+ \d{4}$`: "DD MMMM YYYY",      // 19 July 2025
 		`^\d{2}-\d{2}-\d{2}$`:         "YY-MM-DD",           // 25-07-19
+		`^\d{1,2}-\d{1,2}-\d{2}$`:     "MM-DD-YY",           // 7-20-25 or 07-20-25
 	}
 
 	// Count matches for each pattern
 	patternCounts := make(map[string]int)
+	ambiguousFiles := []string{}
 	
 	for _, filename := range filenames {
+		matched := false
 		for pattern, format := range patterns {
 			if matched, _ := regexp.MatchString(pattern, filename); matched {
 				patternCounts[format]++
+				matched = true
+				break
 			}
 		}
+		
+		// Handle ambiguous MM-DD-YYYY vs DD-MM-YYYY case
+		if !matched {
+			if matched, _ := regexp.MatchString(`^\d{1,2}-\d{1,2}-\d{4}$`, filename); matched {
+				ambiguousFiles = append(ambiguousFiles, filename)
+			}
+		}
+	}
+
+	// Resolve ambiguous MM-DD-YYYY vs DD-MM-YYYY files
+	if len(ambiguousFiles) > 0 {
+		format := resolveAmbiguousDateFormat(ambiguousFiles)
+		patternCounts[format] += len(ambiguousFiles)
 	}
 
 	// Find the most common format
@@ -170,6 +185,49 @@ func detectDateFormatFromFiles(filenames []string) string {
 	}
 
 	return bestFormat
+}
+
+// resolveAmbiguousDateFormat resolves between MM-DD-YYYY and DD-MM-YYYY formats
+// by analyzing the values to see which interpretation makes more sense
+func resolveAmbiguousDateFormat(filenames []string) string {
+	ddmmCount := 0
+	mmddCount := 0
+	
+	for _, filename := range filenames {
+		// Parse the numbers
+		parts := strings.Split(filename, "-")
+		if len(parts) != 3 {
+			continue
+		}
+		
+		first := parts[0]
+		second := parts[1]
+		
+		// Convert to integers
+		firstInt := 0
+		secondInt := 0
+		fmt.Sscanf(first, "%d", &firstInt)
+		fmt.Sscanf(second, "%d", &secondInt)
+		
+		// Check if first value could be a day (> 12) - indicates DD-MM-YYYY
+		if firstInt > 12 {
+			ddmmCount++
+		}
+		// Check if second value could be a day (> 12) - indicates MM-DD-YYYY  
+		if secondInt > 12 {
+			mmddCount++
+		}
+	}
+	
+	// If we found evidence for one format, use it
+	if ddmmCount > mmddCount {
+		return "DD-MM-YYYY"
+	} else if mmddCount > ddmmCount {
+		return "MM-DD-YYYY"
+	}
+	
+	// If no clear evidence, default to MM-DD-YYYY (American format)
+	return "MM-DD-YYYY"
 }
 
 // FindExistingDailyNote looks for an existing daily note for the given date using any detected format
