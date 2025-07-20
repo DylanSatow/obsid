@@ -4,7 +4,13 @@ Automatically track programming work in Obsidian daily notes. Discovers git repo
 
 ## Installation
 
-Build from source:
+**Homebrew (recommended):**
+```bash
+brew tap dylansatow/formulae
+brew install obsid
+```
+
+**Build from source:**
 ```bash
 go build -o obsid
 ```
