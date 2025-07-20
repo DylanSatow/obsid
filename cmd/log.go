@@ -87,12 +87,23 @@ func runLog(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Create vault instance
-	vault := obsidian.NewVault(
-		config.GlobalConfig.Vault.Path,
-		config.GlobalConfig.Vault.DailyNotesDir,
-		config.GlobalConfig.Vault.DateFormat,
-	)
+	// Create vault instance - use viper values if GlobalConfig is empty
+	vaultPath := config.GlobalConfig.Vault.Path
+	dailyNotesDir := config.GlobalConfig.Vault.DailyNotesDir
+	dateFormat := config.GlobalConfig.Vault.DateFormat
+	
+	// Fallback to viper if GlobalConfig is empty
+	if vaultPath == "" {
+		vaultPath = config.GetViperValue("vault.path")
+	}
+	if dailyNotesDir == "" {
+		dailyNotesDir = config.GetViperValue("vault.daily_notes_dir")
+	}
+	if dateFormat == "" {
+		dateFormat = config.GetViperValue("vault.date_format")
+	}
+	
+	vault := obsidian.NewVault(vaultPath, dailyNotesDir, dateFormat)
 
 	// Validate vault exists
 	if !vault.Exists() {
@@ -103,7 +114,10 @@ func runLog(cmd *cobra.Command, args []string) error {
 	today := time.Now()
 	createNote, _ := cmd.Flags().GetBool("create-note")
 	
-	if !vault.DailyNoteExists(today) {
+	// First try to find an existing daily note using any format
+	_, exists := vault.FindExistingDailyNote(today)
+	
+	if !exists {
 		if !createNote {
 			return fmt.Errorf("daily note does not exist for %s\n\nUse --create-note flag to create it automatically:\n  obsidian-cli log --create-note", today.Format("Monday, January 2, 2006"))
 		}
@@ -112,6 +126,12 @@ func runLog(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("could not create daily note: %w", err)
 		}
 		fmt.Printf("📄 Created new daily note for %s\n", today.Format("Monday, January 2, 2006"))
+	} else {
+		// Update vault's date format to match the existing note format
+		detectedFormat, err := vault.DetectDateFormat()
+		if err == nil && detectedFormat != "" && detectedFormat != vault.DateFormat {
+			vault.DateFormat = detectedFormat
+		}
 	}
 
 	// Format project entry

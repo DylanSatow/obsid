@@ -33,10 +33,11 @@ func init() {
 func runConfig(cmd *cobra.Command, args []string) error {
 	fmt.Printf("📍 Configuration file: %s\n\n", config.GetConfigPath())
 	
+	// Show the actual loaded configuration
 	if config.GlobalConfig == nil {
-		return fmt.Errorf("no configuration loaded")
+		return fmt.Errorf("configuration not loaded")
 	}
-
+	
 	// Convert to YAML for nice display
 	data, err := yaml.Marshal(config.GlobalConfig)
 	if err != nil {

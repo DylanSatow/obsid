@@ -10,27 +10,29 @@ import (
 
 var GlobalConfig *Config
 
-func LoadConfig() error {
-	v := viper.New()
+var viperInstance *viper.Viper
 
-	// Set default values
-	setDefaults(v)
+func LoadConfig() error {
+	viperInstance = viper.New()
 
 	// Set config name and paths
-	v.SetConfigName("config")
-	v.SetConfigType("yaml")
+	viperInstance.SetConfigName("config")
+	viperInstance.SetConfigType("yaml")
 
 	// Add config paths
 	home, _ := os.UserHomeDir()
-	v.AddConfigPath(filepath.Join(home, ".config", "obsidian-cli"))
-	v.AddConfigPath(".")
+	viperInstance.AddConfigPath(filepath.Join(home, ".config", "obsidian-cli"))
+	viperInstance.AddConfigPath(".")
 
 	// Enable environment variable reading
-	v.SetEnvPrefix("OBSIDIAN_CLI")
-	v.AutomaticEnv()
+	viperInstance.SetEnvPrefix("OBSIDIAN_CLI")
+	viperInstance.AutomaticEnv()
+
+	// Set defaults before reading config
+	setDefaults(viperInstance)
 
 	// Read config file
-	if err := v.ReadInConfig(); err != nil {
+	if err := viperInstance.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return fmt.Errorf("error reading config file: %w", err)
 		}
@@ -38,31 +40,23 @@ func LoadConfig() error {
 
 	// Unmarshal into struct
 	GlobalConfig = &Config{}
-	if err := v.Unmarshal(GlobalConfig); err != nil {
+	if err := viperInstance.Unmarshal(GlobalConfig); err != nil {
 		return err
-	}
-	
-	// Apply defaults if values are empty
-	if GlobalConfig.Vault.DailyNotesDir == "" {
-		GlobalConfig.Vault.DailyNotesDir = "Daily Notes"
-	}
-	if GlobalConfig.Vault.DateFormat == "" {
-		GlobalConfig.Vault.DateFormat = "YYYY-MM-DD-dddd"
-	}
-	if GlobalConfig.Git.MaxCommits == 0 {
-		GlobalConfig.Git.MaxCommits = 10
-	}
-	if GlobalConfig.Format.TimestampFormat == "" {
-		GlobalConfig.Format.TimestampFormat = "HH:mm"
-	}
-	if len(GlobalConfig.Format.AddTags) == 0 {
-		GlobalConfig.Format.AddTags = []string{"#programming"}
 	}
 	
 	return nil
 }
 
+// GetViperValue returns the actual value from viper, bypassing GlobalConfig if needed
+func GetViperValue(key string) string {
+	if viperInstance != nil {
+		return viperInstance.GetString(key)
+	}
+	return ""
+}
+
 func setDefaults(v *viper.Viper) {
+	// Set defaults for all configuration values
 	v.SetDefault("vault.path", "")
 	v.SetDefault("vault.daily_notes_dir", "Daily Notes")
 	v.SetDefault("vault.date_format", "YYYY-MM-DD-dddd")

@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/DylanSatow/obsidian-cli/pkg/obsidian"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -60,12 +61,46 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("vault path does not exist: %s", vaultPath)
 	}
 
-	// Interactive configuration
-	if interactive {
-		var err error
-		dailyNotesDir, dateFormat, err = promptForDailyNoteConfig(vaultPath, dailyNotesDir, dateFormat)
-		if err != nil {
-			return fmt.Errorf("interactive setup failed: %w", err)
+	// Auto-detect daily note settings (always attempt this)
+	fmt.Printf("🔍 Scanning vault for daily notes...\n")
+	
+	// Try to auto-detect date format from existing files
+	vault := obsidian.NewVault(vaultPath, dailyNotesDir, dateFormat)
+	detectedFormat, err := vault.DetectDateFormat()
+	
+	if err == nil {
+		fmt.Printf("📅 Found existing format: %s (%s directory)\n", detectedFormat, dailyNotesDir)
+		
+		if interactive {
+			fmt.Print("Use detected format? (Y/n): ")
+			reader := bufio.NewReader(os.Stdin)
+			response, _ := reader.ReadString('\n')
+			response = strings.TrimSpace(response)
+			if response == "" || strings.ToLower(response) == "y" || strings.ToLower(response) == "yes" {
+				dateFormat = detectedFormat
+			} else {
+				// Still run interactive setup for manual configuration
+				var err error
+				dailyNotesDir, dateFormat, err = promptForDailyNoteConfig(vaultPath, dailyNotesDir, dateFormat)
+				if err != nil {
+					return fmt.Errorf("interactive setup failed: %w", err)
+				}
+			}
+		} else {
+			// Non-interactive: use detected format automatically
+			dateFormat = detectedFormat
+		}
+	} else {
+		fmt.Printf("⚠️  No existing daily notes found: %v\n", err)
+		if interactive {
+			fmt.Printf("📝 Setting up daily note configuration...\n")
+			var err error
+			dailyNotesDir, dateFormat, err = promptForDailyNoteConfig(vaultPath, dailyNotesDir, dateFormat)
+			if err != nil {
+				return fmt.Errorf("interactive setup failed: %w", err)
+			}
+		} else {
+			fmt.Printf("📝 Using defaults: %s directory, %s format\n", dailyNotesDir, dateFormat)
 		}
 	}
 
@@ -117,9 +152,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	if len(projectDirs) > 0 {
 		fmt.Printf("🚀 Project directories: %v\n", projectDirs)
 	}
-	fmt.Printf("\nNext steps:\n")
-	fmt.Printf("  obsidian-cli log --create-note # Log current project activity\n")
-	fmt.Printf("  obsidian-cli log --git-summary # Include detailed git analysis\n")
+	fmt.Printf("\n⚡ Ready to use: obsidian-cli log\n")
 
 	return nil
 }
