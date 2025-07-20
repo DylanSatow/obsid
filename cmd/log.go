@@ -31,7 +31,8 @@ Examples:
   obsidian-cli log --git-summary                     # Include detailed git analysis  
   obsidian-cli log --timeframe 2h                    # Log last 2 hours
   obsidian-cli log --timeframe today                 # Log all activity today
-  obsidian-cli log --project "My Custom Project"     # Override project name`,
+  obsidian-cli log --project "My Custom Project"     # Override project name
+  obsidian-cli log --create-note                     # Create daily note if missing`,
 	RunE: runLog,
 }
 
@@ -41,6 +42,7 @@ func init() {
 	logCmd.Flags().BoolP("git-summary", "g", false, "include detailed git analysis")
 	logCmd.Flags().StringP("timeframe", "t", "1h", "timeframe for analysis (e.g., '2h', 'today')")
 	logCmd.Flags().StringP("project", "p", "", "override project name")
+	logCmd.Flags().BoolP("create-note", "c", false, "create daily note if it doesn't exist")
 }
 
 func runLog(cmd *cobra.Command, args []string) error {
@@ -97,10 +99,19 @@ func runLog(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("vault not found at: %s", vault.Path)
 	}
 
-	// Ensure daily note exists
+	// Check if daily note exists and handle creation
 	today := time.Now()
-	if err := vault.EnsureDailyNote(today); err != nil {
-		return fmt.Errorf("could not ensure daily note: %w", err)
+	createNote, _ := cmd.Flags().GetBool("create-note")
+	
+	if !vault.DailyNoteExists(today) {
+		if !createNote {
+			return fmt.Errorf("daily note does not exist for %s\n\nUse --create-note flag to create it automatically:\n  obsidian-cli log --create-note", today.Format("Monday, January 2, 2006"))
+		}
+		
+		if err := vault.CreateDailyNote(today); err != nil {
+			return fmt.Errorf("could not create daily note: %w", err)
+		}
+		fmt.Printf("📄 Created new daily note for %s\n", today.Format("Monday, January 2, 2006"))
 	}
 
 	// Format project entry
