@@ -4,7 +4,6 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/chzyer/readline"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -52,38 +52,46 @@ func runInit(cmd *cobra.Command, args []string) error {
 }
 
 func runInteractiveInit(cmd *cobra.Command) error {
-	reader := bufio.NewReader(os.Stdin)
+	// Create readline instance with basic tab completion
+	rl, err := readline.NewEx(&readline.Config{
+		Prompt:       "",
+		AutoComplete: &BasicFileCompleter{},
+	})
+	if err != nil {
+		return err
+	}
+	defer rl.Close()
 
 	fmt.Println("Welcome to Obsidian CLI Setup!")
 	fmt.Println("This interactive setup will help you configure obsid to work with your Obsidian vault.")
 	fmt.Println()
 
 	// Step 1: Get vault path
-	vaultPath, err := promptForVaultPath(reader)
+	vaultPath, err := promptForVaultPath(rl)
 	if err != nil {
 		return err
 	}
 
 	// Step 2: Auto-detect or configure daily notes
-	dailyNotesDir, dateFormat, err := setupDailyNotes(vaultPath, reader)
+	dailyNotesDir, dateFormat, err := setupDailyNotes(vaultPath, rl)
 	if err != nil {
 		return err
 	}
 
 	// Step 3: Configure project directories
-	projectDirs, err := promptForProjectDirectories(reader)
+	projectDirs, err := promptForProjectDirectories(rl)
 	if err != nil {
 		return err
 	}
 
 	// Step 4: Configure git settings
-	gitConfig, err := promptForGitSettings(reader)
+	gitConfig, err := promptForGitSettings(rl)
 	if err != nil {
 		return err
 	}
 
 	// Step 5: Configure formatting options
-	formatConfig, err := promptForFormattingSettings(reader)
+	formatConfig, err := promptForFormattingSettings(rl)
 	if err != nil {
 		return err
 	}
@@ -130,13 +138,14 @@ func runNonInteractiveInit(cmd *cobra.Command) error {
 	return saveConfiguration(vaultPath, dailyNotesDir, dateFormat, projectDirs, gitConfig, formatConfig)
 }
 
-func promptForVaultPath(reader *bufio.Reader) (string, error) {
+func promptForVaultPath(rl *readline.Instance) (string, error) {
 	fmt.Println("Step 1: Obsidian Vault Location")
 	fmt.Println("Please enter the path to your Obsidian vault.")
 	fmt.Println("Examples: ~/Documents/MyVault, /Users/username/Obsidian/MainVault")
 	fmt.Print("Vault path: ")
 
-	vaultPath, err := reader.ReadString('\n')
+	rl.SetPrompt("Vault path: ")
+	vaultPath, err := rl.Readline()
 	if err != nil {
 		return "", err
 	}
@@ -162,9 +171,10 @@ func promptForVaultPath(reader *bufio.Reader) (string, error) {
 	if _, err := os.Stat(vaultPath); os.IsNotExist(err) {
 		fmt.Printf("Vault path does not exist: %s\n", vaultPath)
 		fmt.Print("Would you like to try again? (y/N): ")
-		retry, _ := reader.ReadString('\n')
+		rl.SetPrompt("Would you like to try again? (y/N): ")
+		retry, _ := rl.Readline()
 		if strings.ToLower(strings.TrimSpace(retry)) == "y" {
-			return promptForVaultPath(reader)
+			return promptForVaultPath(rl)
 		}
 		return "", fmt.Errorf("vault path does not exist: %s", vaultPath)
 	}
@@ -173,7 +183,7 @@ func promptForVaultPath(reader *bufio.Reader) (string, error) {
 	return vaultPath, nil
 }
 
-func setupDailyNotes(vaultPath string, reader *bufio.Reader) (string, string, error) {
+func setupDailyNotes(vaultPath string, rl *readline.Instance) (string, string, error) {
 	fmt.Println("Step 2: Daily Notes Configuration")
 	fmt.Println("Scanning your vault for existing daily notes...")
 
@@ -194,7 +204,8 @@ func setupDailyNotes(vaultPath string, reader *bufio.Reader) (string, string, er
 			fmt.Printf("  Directory: %s\n", detectedDir)
 			fmt.Printf("  Format: %s\n", detectedFormat)
 			fmt.Print("Use detected configuration? (Y/n): ")
-			response, _ := reader.ReadString('\n')
+			rl.SetPrompt("Use detected configuration? (Y/n): ")
+			response, _ := rl.Readline()
 			response = strings.TrimSpace(response)
 			if response == "" || strings.ToLower(response) == "y" || strings.ToLower(response) == "yes" {
 				return detectedDir, detectedFormat, nil
@@ -205,17 +216,18 @@ func setupDailyNotes(vaultPath string, reader *bufio.Reader) (string, string, er
 	}
 
 	fmt.Println("Let's configure your daily notes setup.")
-	return promptForDailyNoteConfig(vaultPath, "Daily Notes", "YYYY-MM-DD-dddd")
+	return promptForDailyNoteConfig(vaultPath, "Daily Notes", "YYYY-MM-DD-dddd", rl)
 }
 
-func promptForProjectDirectories(reader *bufio.Reader) ([]string, error) {
+func promptForProjectDirectories(rl *readline.Instance) ([]string, error) {
 	fmt.Println("Step 3: Project Directories")
 	fmt.Println("Enter directories containing your programming projects (optional).")
 	fmt.Println("Examples: ~/Projects, ~/work, /Users/username/Development")
 	fmt.Println("You can enter multiple directories separated by commas, or press Enter to skip.")
 	fmt.Print("Project directories: ")
 
-	input, err := reader.ReadString('\n')
+	rl.SetPrompt("Project directories: ")
+	input, err := rl.Readline()
 	if err != nil {
 		return nil, err
 	}
@@ -251,12 +263,13 @@ func promptForProjectDirectories(reader *bufio.Reader) ([]string, error) {
 	return projectDirs, nil
 }
 
-func promptForGitSettings(reader *bufio.Reader) (map[string]interface{}, error) {
+func promptForGitSettings(rl *readline.Instance) (map[string]interface{}, error) {
 	fmt.Println("Step 4: Git Analysis Settings")
 
 	// Max commits
 	fmt.Print("Maximum commits to analyze (default: 10): ")
-	maxCommitsStr, _ := reader.ReadString('\n')
+	rl.SetPrompt("Maximum commits to analyze (default: 10): ")
+	maxCommitsStr, _ := rl.Readline()
 	maxCommitsStr = strings.TrimSpace(maxCommitsStr)
 	maxCommits := 10
 	if maxCommitsStr != "" {
@@ -267,12 +280,14 @@ func promptForGitSettings(reader *bufio.Reader) (map[string]interface{}, error) 
 
 	// Include diffs
 	fmt.Print("Include file diffs in analysis? (y/N): ")
-	includeDiffsStr, _ := reader.ReadString('\n')
+	rl.SetPrompt("Include file diffs in analysis? (y/N): ")
+	includeDiffsStr, _ := rl.Readline()
 	includeDiffs := strings.ToLower(strings.TrimSpace(includeDiffsStr)) == "y"
 
 	// Ignore merge commits
 	fmt.Print("Ignore merge commits? (Y/n): ")
-	ignoreMergeStr, _ := reader.ReadString('\n')
+	rl.SetPrompt("Ignore merge commits? (Y/n): ")
+	ignoreMergeStr, _ := rl.Readline()
 	ignoreMergeStr = strings.TrimSpace(ignoreMergeStr)
 	ignoreMerge := ignoreMergeStr == "" || strings.ToLower(ignoreMergeStr) == "y"
 
@@ -285,18 +300,20 @@ func promptForGitSettings(reader *bufio.Reader) (map[string]interface{}, error) 
 	}, nil
 }
 
-func promptForFormattingSettings(reader *bufio.Reader) (map[string]interface{}, error) {
+func promptForFormattingSettings(rl *readline.Instance) (map[string]interface{}, error) {
 	fmt.Println("Step 5: Formatting Options")
 
 	// Create links
 	fmt.Print("Create Obsidian links for file names? (Y/n): ")
-	createLinksStr, _ := reader.ReadString('\n')
+	rl.SetPrompt("Create Obsidian links for file names? (Y/n): ")
+	createLinksStr, _ := rl.Readline()
 	createLinksStr = strings.TrimSpace(createLinksStr)
 	createLinks := createLinksStr == "" || strings.ToLower(createLinksStr) == "y"
 
 	// Tags
 	fmt.Print("Default tags to add (comma-separated, default: #programming): ")
-	tagsStr, _ := reader.ReadString('\n')
+	rl.SetPrompt("Default tags to add (comma-separated, default: #programming): ")
+	tagsStr, _ := rl.Readline()
 	tagsStr = strings.TrimSpace(tagsStr)
 	tags := []string{"#programming"}
 	if tagsStr != "" {
@@ -312,7 +329,8 @@ func promptForFormattingSettings(reader *bufio.Reader) (map[string]interface{}, 
 
 	// Timestamp format
 	fmt.Print("Timestamp format (default: HH:mm): ")
-	timestampStr, _ := reader.ReadString('\n')
+	rl.SetPrompt("Timestamp format (default: HH:mm): ")
+	timestampStr, _ := rl.Readline()
 	timestampStr = strings.TrimSpace(timestampStr)
 	if timestampStr == "" {
 		timestampStr = "HH:mm"
@@ -378,8 +396,7 @@ func saveConfiguration(vaultPath, dailyNotesDir, dateFormat string, projectDirs 
 	return nil
 }
 
-func promptForDailyNoteConfig(vaultPath, currentDailyNotesDir, currentDateFormat string) (string, string, error) {
-	reader := bufio.NewReader(os.Stdin)
+func promptForDailyNoteConfig(vaultPath, currentDailyNotesDir, currentDateFormat string, rl *readline.Instance) (string, string, error) {
 
 	fmt.Println("\nInteractive Daily Note Configuration")
 	fmt.Println("This will help configure obsid to work with your specific daily note setup.")
@@ -388,7 +405,8 @@ func promptForDailyNoteConfig(vaultPath, currentDailyNotesDir, currentDateFormat
 	fmt.Printf("\nDaily notes directory (current: %s): ", currentDailyNotesDir)
 	fmt.Print("Enter the folder name where your daily notes are stored (press Enter for default): ")
 
-	dailyNotesDir, err := reader.ReadString('\n')
+	rl.SetPrompt("Enter the folder name where your daily notes are stored (press Enter for default): ")
+	dailyNotesDir, err := rl.Readline()
 	if err != nil {
 		return "", "", err
 	}
@@ -413,7 +431,8 @@ func promptForDailyNoteConfig(vaultPath, currentDailyNotesDir, currentDateFormat
 	fmt.Printf("\nCurrent format: %s\n", currentDateFormat)
 	fmt.Print("Enter your date format (press Enter to keep current, or type a number 1-10 for common formats): ")
 
-	dateFormatInput, err := reader.ReadString('\n')
+	rl.SetPrompt("Enter your date format (press Enter to keep current, or type a number 1-10 for common formats): ")
+	dateFormatInput, err := rl.Readline()
 	if err != nil {
 		return "", "", err
 	}
@@ -457,7 +476,8 @@ func promptForDailyNoteConfig(vaultPath, currentDailyNotesDir, currentDateFormat
 	fmt.Printf("   Today's note would be: %s/%s.md\n", dailyNotesDir, exampleName)
 
 	fmt.Print("\nDoes this look correct? (y/N): ")
-	confirm, err := reader.ReadString('\n')
+	rl.SetPrompt("Does this look correct? (y/N): ")
+	confirm, err := rl.Readline()
 	if err != nil {
 		return "", "", err
 	}
@@ -555,6 +575,78 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// BasicFileCompleter provides simple file completion
+type BasicFileCompleter struct{}
+
+// Do implements the AutoCompleter interface with basic file completion
+func (c *BasicFileCompleter) Do(line []rune, pos int) ([][]rune, int) {
+	if pos == 0 {
+		return nil, 0
+	}
+	
+	// Note: we work directly with the rune slice
+	
+	// Find the start of the current word
+	start := pos - 1
+	for start >= 0 && line[start] != ' ' && line[start] != '\t' {
+		start--
+	}
+	start++
+	
+	// Extract the current path being typed
+	currentPath := string(line[start:pos])
+	
+	// Get directory to search and file prefix
+	var searchDir, filePrefix string
+	
+	if currentPath == "" {
+		searchDir = "."
+		filePrefix = ""
+	} else if strings.Contains(currentPath, "/") {
+		searchDir = filepath.Dir(currentPath)
+		filePrefix = filepath.Base(currentPath)
+		
+		// Handle special cases
+		if searchDir == "." && strings.HasPrefix(currentPath, "./") {
+			searchDir = "."
+		} else if strings.HasPrefix(currentPath, "~/") {
+			home, _ := os.UserHomeDir()
+			if searchDir == "~" {
+				searchDir = home
+			} else {
+				searchDir = strings.Replace(searchDir, "~", home, 1)
+			}
+		}
+	} else {
+		searchDir = "."
+		filePrefix = currentPath
+	}
+	
+	// Read directory contents
+	entries, err := os.ReadDir(searchDir)
+	if err != nil {
+		return nil, len(currentPath)
+	}
+	
+	// Find matching entries and return completions
+	var completions [][]rune
+	for _, entry := range entries {
+		name := entry.Name()
+		if strings.HasPrefix(name, filePrefix) {
+			// Calculate the suffix to complete
+			suffix := name[len(filePrefix):]
+			if entry.IsDir() {
+				suffix += "/"
+			}
+			if suffix != "" {
+				completions = append(completions, []rune(suffix))
+			}
+		}
+	}
+	
+	return completions, len(currentPath)
 }
 
 // detectDailyNotesConfig analyzes the file paths to detect the most common directory and format
