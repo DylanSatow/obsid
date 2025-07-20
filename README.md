@@ -1,6 +1,6 @@
 # Obsidian CLI
 
-A command-line tool for automatically logging programming project activities to Obsidian daily notes. Tracks git commits, file changes, and project progress with intelligent formatting.
+Automatically track programming work in Obsidian daily notes. Discovers git repositories, analyzes commits, and formats intelligent project entries.
 
 ## Installation
 
@@ -11,53 +11,58 @@ go build -o obsidian-cli
 
 ## Setup
 
-Initialize configuration with your Obsidian vault:
+Interactive configuration (recommended):
+```bash
+obsidian-cli init
+```
+
+Quick setup:
 ```bash
 obsidian-cli init --vault ~/Obsidian/Main
 ```
 
-Interactive setup with project directory scanning:
-```bash
-obsidian-cli init --vault ~/Obsidian/Main --interactive
-```
-
 ## Usage
 
-Log current project activity:
+Log all discovered projects:
 ```bash
 obsidian-cli log
 ```
 
-Include detailed git analysis:
+Log current repository:
+```bash
+obsidian-cli log .
+```
+
+Log specific timeframe with details:
 ```bash
 obsidian-cli log --git-summary --timeframe 2h
 ```
 
-Create daily note if missing:
+Create daily note when missing:
 ```bash
 obsidian-cli log --create-note
 ```
 
-View current configuration:
+View configuration:
 ```bash
 obsidian-cli config
 ```
 
-## Configuration
-
-Configuration is stored in `~/.config/obsidian-cli/config.yaml`. The tool supports various daily note date formats and customizable project directories.
-
 ## Features
 
-- Automatic git repository detection
-- Smart daily note management
-- Flexible date format support
-- Project activity summarization
-- Safe note creation with explicit permission
-- Time-based commit filtering
+- **Smart Discovery**: Finds all git repositories in configured directories
+- **Intelligent Formatting**: Converts commits to readable accomplishments  
+- **Flexible Timeframes**: Support for `1h`, `2h30m`, `today`, `yesterday`
+- **Safe Operation**: Requires explicit permission to create daily notes
+- **Format Detection**: Auto-detects existing daily note date formats
+- **Area Categorization**: Groups changes by functional areas (frontend, backend, tests)
+
+## Configuration
+
+Stored in `~/.config/obsidian-cli/config.yaml`. Configure vault path, project directories, git settings, and formatting preferences through interactive setup.
 
 ## Requirements
 
 - Go 1.19+
-- Git repository for project tracking
+- Git repositories for tracking
 - Obsidian vault with daily notes
