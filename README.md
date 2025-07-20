@@ -6,46 +6,46 @@ Automatically track programming work in Obsidian daily notes. Discovers git repo
 
 Build from source:
 ```bash
-go build -o obsidian-cli
+go build -o obsid
 ```
 
 ## Setup
 
 Interactive configuration (recommended):
 ```bash
-obsidian-cli init
+obsid init
 ```
 
 Quick setup:
 ```bash
-obsidian-cli init --vault ~/Obsidian/Main
+obsid init --vault ~/Obsidian/Main
 ```
 
 ## Usage
 
 Log all discovered projects:
 ```bash
-obsidian-cli log
+obsid log
 ```
 
 Log current repository:
 ```bash
-obsidian-cli log .
+obsid log .
 ```
 
 Log specific timeframe with details:
 ```bash
-obsidian-cli log --git-summary --timeframe 2h
+obsid log --git-summary --timeframe 2h
 ```
 
 Create daily note when missing:
 ```bash
-obsidian-cli log --create-note
+obsid log --create-note
 ```
 
 View configuration:
 ```bash
-obsidian-cli config
+obsid config
 ```
 
 ## Features
@@ -59,7 +59,7 @@ obsidian-cli config
 
 ## Configuration
 
-Stored in `~/.config/obsidian-cli/config.yaml`. Configure vault path, project directories, git settings, and formatting preferences through interactive setup.
+Stored in `~/.config/obsid/config.yaml`. Configure vault path, project directories, git settings, and formatting preferences through interactive setup.
 
 ## Requirements
 

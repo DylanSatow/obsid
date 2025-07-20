@@ -1,4 +1,4 @@
-module github.com/DylanSatow/obsidian-cli
+module github.com/DylanSatow/obsid
 
 go 1.24.4
 

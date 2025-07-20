@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/DylanSatow/obsidian-cli/pkg/config"
-	"github.com/DylanSatow/obsidian-cli/pkg/git"
-	"github.com/DylanSatow/obsidian-cli/pkg/obsidian"
-	"github.com/DylanSatow/obsidian-cli/pkg/utils"
+	"github.com/DylanSatow/obsid/pkg/config"
+	"github.com/DylanSatow/obsid/pkg/git"
+	"github.com/DylanSatow/obsid/pkg/obsidian"
+	"github.com/DylanSatow/obsid/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -28,14 +28,14 @@ When no path is provided, recursively discovers and logs all git repositories
 in your configured projects directories.
 
 Examples:
-  obsidian-cli log                                    # Log all repos in projects directories
-  obsidian-cli log .                                  # Log current directory repo
-  obsidian-cli log /path/to/repo                      # Log specific repo
-  obsidian-cli log --git-summary                     # Include detailed git analysis  
-  obsidian-cli log --timeframe 2h                    # Log last 2 hours
-  obsidian-cli log --timeframe today                 # Log all activity today
-  obsidian-cli log --project "My Custom Project"     # Override project name
-  obsidian-cli log --create-note                     # Create daily note if missing`,
+  obsid log                                    # Log all repos in projects directories
+  obsid log .                                  # Log current directory repo
+  obsid log /path/to/repo                      # Log specific repo
+  obsid log --git-summary                     # Include detailed git analysis  
+  obsid log --timeframe 2h                    # Log last 2 hours
+  obsid log --timeframe today                 # Log all activity today
+  obsid log --project "My Custom Project"     # Override project name
+  obsid log --create-note                     # Create daily note if missing`,
 	RunE: runLog,
 }
 
@@ -144,7 +144,7 @@ func logSingleRepository(repo *git.Repository, cmd *cobra.Command) error {
 	
 	if !exists {
 		if !createNote {
-			return fmt.Errorf("daily note does not exist for %s\n\nUse --create-note flag to create it automatically:\n  obsidian-cli log --create-note", today.Format("Monday, January 2, 2006"))
+			return fmt.Errorf("daily note does not exist for %s\n\nUse --create-note flag to create it automatically:\n  obsid log --create-note", today.Format("Monday, January 2, 2006"))
 		}
 		
 		if err := vault.CreateDailyNote(today); err != nil {

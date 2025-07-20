@@ -8,22 +8,22 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/DylanSatow/obsidian-cli/pkg/config"
+	"github.com/DylanSatow/obsid/pkg/config"
 	"github.com/spf13/cobra"
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "obsidian-cli",
+	Use:   "obsid",
 	Short: "A CLI tool for logging programming projects to Obsidian daily notes",
-	Long: `Obsidian CLI automates the logging of programming project activities 
+	Long: `obsid automates the logging of programming project activities 
 into your Obsidian daily notes. Track git commits, changes, and project 
 progress with intelligent formatting and seamless integration.
 
 Examples:
-  obsidian-cli init --vault ~/Obsidian/Main
-  obsidian-cli log
-  obsidian-cli log --git-summary --timeframe 2h`,
+  obsid init --vault ~/Obsidian/Main
+  obsid log
+  obsid log --git-summary --timeframe 2h`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Skip config loading for init command
 		if cmd.Name() == "init" {
@@ -32,7 +32,7 @@ Examples:
 		
 		if err := config.LoadConfig(); err != nil {
 			if !config.ConfigExists() {
-				fmt.Println("No configuration found. Run 'obsidian-cli init' to set up.")
+				fmt.Println("No configuration found. Run 'obsid init' to set up.")
 				os.Exit(1)
 			}
 			fmt.Printf("Warning: Could not load config: %v\n", err)

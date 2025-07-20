@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/DylanSatow/obsidian-cli/pkg/obsidian"
+	"github.com/DylanSatow/obsid/pkg/obsidian"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -19,15 +19,15 @@ import (
 // initCmd represents the init command
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize obsidian-cli configuration",
-	Long: `Set up initial configuration for obsidian-cli with vault path and project directories.
+	Short: "Initialize obsid configuration",
+	Long: `Set up initial configuration for obsid with vault path and project directories.
 
 This command runs in interactive mode by default, prompting you for all configuration
 options. Use --non-interactive to provide all options via command-line flags.
 
 Examples:
-  obsidian-cli init                                              (interactive mode - recommended)
-  obsidian-cli init --non-interactive --vault ~/Obsidian/Main   (non-interactive mode)`,
+  obsid init                                              (interactive mode - recommended)
+  obsid init --non-interactive --vault ~/Obsidian/Main   (non-interactive mode)`,
 	RunE: runInit,
 }
 
@@ -55,7 +55,7 @@ func runInteractiveInit(cmd *cobra.Command) error {
 	reader := bufio.NewReader(os.Stdin)
 
 	fmt.Println("Welcome to Obsidian CLI Setup!")
-	fmt.Println("This interactive setup will help you configure obsidian-cli to work with your Obsidian vault.")
+	fmt.Println("This interactive setup will help you configure obsid to work with your Obsidian vault.")
 	fmt.Println()
 
 	// Step 1: Get vault path
@@ -309,7 +309,7 @@ func promptForFormattingSettings(reader *bufio.Reader) (map[string]interface{}, 
 func saveConfiguration(vaultPath, dailyNotesDir, dateFormat string, projectDirs []string, gitConfig, formatConfig map[string]interface{}) error {
 	// Create config directory
 	home, _ := os.UserHomeDir()
-	configDir := filepath.Join(home, ".config", "obsidian-cli")
+	configDir := filepath.Join(home, ".config", "obsid")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return fmt.Errorf("could not create config directory: %w", err)
 	}
@@ -351,7 +351,7 @@ func saveConfiguration(vaultPath, dailyNotesDir, dateFormat string, projectDirs 
 		fmt.Printf("   Project directories: %v\n", projectDirs)
 	}
 	fmt.Println()
-	fmt.Println("Ready to use: obsidian-cli log")
+	fmt.Println("Ready to use: obsid log")
 	fmt.Println("   Run this command from any git repository to log your activity!")
 
 	return nil
@@ -361,7 +361,7 @@ func promptForDailyNoteConfig(vaultPath, currentDailyNotesDir, currentDateFormat
 	reader := bufio.NewReader(os.Stdin)
 
 	fmt.Println("\nInteractive Daily Note Configuration")
-	fmt.Println("This will help configure obsidian-cli to work with your specific daily note setup.")
+	fmt.Println("This will help configure obsid to work with your specific daily note setup.")
 
 	// Scan vault for existing daily notes to suggest configuration
 	suggestions := scanVaultForDailyNotes(vaultPath)

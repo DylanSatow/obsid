@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/DylanSatow/obsidian-cli/pkg/config"
-	"github.com/DylanSatow/obsidian-cli/pkg/git"
+	"github.com/DylanSatow/obsid/pkg/config"
+	"github.com/DylanSatow/obsid/pkg/git"
 )
 
 func FormatProjectEntry(repo *git.Repository, commits []git.Commit, files []string, timeRange string) string {

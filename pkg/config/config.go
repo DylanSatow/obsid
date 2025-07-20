@@ -21,11 +21,11 @@ func LoadConfig() error {
 
 	// Add config paths
 	home, _ := os.UserHomeDir()
-	viperInstance.AddConfigPath(filepath.Join(home, ".config", "obsidian-cli"))
+	viperInstance.AddConfigPath(filepath.Join(home, ".config", "obsid"))
 	viperInstance.AddConfigPath(".")
 
 	// Enable environment variable reading
-	viperInstance.SetEnvPrefix("OBSIDIAN_CLI")
+	viperInstance.SetEnvPrefix("OBSID")
 	viperInstance.AutomaticEnv()
 
 	// Set defaults before reading config
@@ -72,7 +72,7 @@ func setDefaults(v *viper.Viper) {
 
 func GetConfigPath() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".config", "obsidian-cli", "config.yaml")
+	return filepath.Join(home, ".config", "obsid", "config.yaml")
 }
 
 func ConfigExists() bool {

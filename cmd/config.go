@@ -7,7 +7,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/DylanSatow/obsidian-cli/pkg/config"
+	"github.com/DylanSatow/obsid/pkg/config"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -16,13 +16,13 @@ import (
 var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "Show current configuration",
-	Long: `Display the current obsidian-cli configuration.
+	Long: `Display the current obsid configuration.
 
 This command shows the loaded configuration including vault path, 
 project directories, and formatting settings.
 
 Examples:
-  obsidian-cli config       # Show current configuration`,
+  obsid config       # Show current configuration`,
 	RunE: runConfig,
 }
 
