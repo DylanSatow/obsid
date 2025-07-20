@@ -7,6 +7,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/DylanSatow/obsidian-cli/pkg/config"
@@ -18,16 +19,18 @@ import (
 
 // logCmd represents the log command
 var logCmd = &cobra.Command{
-	Use:   "log",
-	Short: "Log current project activity to daily note",
-	Long: `Analyze current project and log git commits and changes to today's daily note.
+	Use:   "log [path]",
+	Short: "Log project activity to daily note",
+	Long: `Analyze project(s) and log git commits and changes to today's daily note.
 
-This command finds the current git repository, analyzes recent commits and changes,
-then formats and appends this information to your Obsidian daily note under a 
-"Projects" section.
+When a path is provided, logs only that specific repository.
+When no path is provided, recursively discovers and logs all git repositories 
+in your configured projects directories.
 
 Examples:
-  obsidian-cli log                                    # Log last hour of activity
+  obsidian-cli log                                    # Log all repos in projects directories
+  obsidian-cli log .                                  # Log current directory repo
+  obsidian-cli log /path/to/repo                      # Log specific repo
   obsidian-cli log --git-summary                     # Include detailed git analysis  
   obsidian-cli log --timeframe 2h                    # Log last 2 hours
   obsidian-cli log --timeframe today                 # Log all activity today
@@ -45,19 +48,36 @@ func init() {
 	logCmd.Flags().BoolP("create-note", "c", false, "create daily note if it doesn't exist")
 }
 
-func runLog(cmd *cobra.Command, args []string) error {
-	// Get current working directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("could not get current directory: %w", err)
+func discoverGitRepositories(directories []string) ([]*git.Repository, error) {
+	var repos []*git.Repository
+	
+	for _, dir := range directories {
+		err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return nil // Skip inaccessible paths
+			}
+			
+			if info.IsDir() && info.Name() == ".git" {
+				repoPath := filepath.Dir(path)
+				repo, err := git.FindRepository(repoPath)
+				if err == nil {
+					repos = append(repos, repo)
+				}
+				return filepath.SkipDir // Don't go deeper into .git directory
+			}
+			
+			return nil
+		})
+		
+		if err != nil {
+			fmt.Printf("Warning: could not scan directory %s: %v\n", dir, err)
+		}
 	}
+	
+	return repos, nil
+}
 
-	// Find git repository
-	repo, err := git.FindRepository(cwd)
-	if err != nil {
-		return fmt.Errorf("could not find git repository: %w", err)
-	}
-
+func logSingleRepository(repo *git.Repository, cmd *cobra.Command) error {
 	// Parse timeframe
 	timeframe, _ := cmd.Flags().GetString("timeframe")
 	since, err := utils.ParseTimeframe(timeframe)
@@ -77,13 +97,18 @@ func runLog(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("could not get commits: %w", err)
 	}
 
+	// Skip if no activity
+	if len(commits) == 0 {
+		return nil
+	}
+
 	// Get changed files if git-summary is requested
 	var files []string
 	gitSummary, _ := cmd.Flags().GetBool("git-summary")
 	if gitSummary {
 		files, err = repo.GetChangedFiles(since)
 		if err != nil {
-			fmt.Printf("Warning: could not get changed files: %v\n", err)
+			fmt.Printf("Warning: could not get changed files for %s: %v\n", repo.Name, err)
 		}
 	}
 
@@ -144,15 +169,68 @@ func runLog(cmd *cobra.Command, args []string) error {
 	}
 
 	// Success message
-	fmt.Printf("Logged activity for %s\n", projectName)
-	fmt.Printf("Daily note: %s\n", vault.GetDailyNotePath(today))
-	fmt.Printf("Time range: %s\n", timeRange)
-	if len(commits) > 0 {
-		fmt.Printf("Commits: %d\n", len(commits))
-	}
+	fmt.Printf("Logged activity for %s (commits: %d", projectName, len(commits))
 	if len(files) > 0 {
-		fmt.Printf("Files changed: %d\n", len(files))
+		fmt.Printf(", files: %d", len(files))
 	}
+	fmt.Printf(")\n")
 
+	return nil
+}
+
+func runLog(cmd *cobra.Command, args []string) error {
+	var repos []*git.Repository
+	
+	if len(args) > 0 {
+		// Path provided - log specific repository
+		targetPath := args[0]
+		if targetPath == "." {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("could not get current directory: %w", err)
+			}
+			targetPath = cwd
+		}
+		
+		repo, err := git.FindRepository(targetPath)
+		if err != nil {
+			return fmt.Errorf("could not find git repository at %s: %w", targetPath, err)
+		}
+		repos = append(repos, repo)
+	} else {
+		// No path provided - discover all repositories in projects directories
+		projectDirs := config.GlobalConfig.Projects.Directories
+		if len(projectDirs) == 0 {
+			// Fallback to default projects directory
+			home, _ := os.UserHomeDir()
+			projectDirs = []string{filepath.Join(home, "projects")}
+		}
+		
+		discoveredRepos, err := discoverGitRepositories(projectDirs)
+		if err != nil {
+			return fmt.Errorf("could not discover repositories: %w", err)
+		}
+		repos = discoveredRepos
+	}
+	
+	if len(repos) == 0 {
+		return fmt.Errorf("no git repositories found")
+	}
+	
+	// Log each repository
+	loggedCount := 0
+	for _, repo := range repos {
+		if err := logSingleRepository(repo, cmd); err != nil {
+			fmt.Printf("Error logging %s: %v\n", repo.Name, err)
+			continue
+		}
+		loggedCount++
+	}
+	
+	if loggedCount == 0 {
+		return fmt.Errorf("no repositories had activity to log")
+	}
+	
+	fmt.Printf("\nLogged %d of %d repositories\n", loggedCount, len(repos))
 	return nil
 }

@@ -40,16 +40,16 @@ func FormatTimeRange(since time.Time) string {
 
 	if duration < time.Hour {
 		minutes := int(duration.Minutes())
-		return fmt.Sprintf("%s - %s (%dm)", since.Format("15:04"), now.Format("15:04"), minutes)
+		return fmt.Sprintf("%s - %s (%dm)", since.Format("3:04PM"), now.Format("3:04PM"), minutes)
 	}
 
 	if duration < 24*time.Hour && since.Day() == now.Day() {
-		return fmt.Sprintf("%s - %s", since.Format("15:04"), now.Format("15:04"))
+		return fmt.Sprintf("%s - %s", since.Format("3:04PM"), now.Format("3:04PM"))
 	}
 
 	if since.Day() == now.Day() {
-		return fmt.Sprintf("Today %s - %s", since.Format("15:04"), now.Format("15:04"))
+		return fmt.Sprintf("Today %s - %s", since.Format("3:04PM"), now.Format("3:04PM"))
 	}
 
-	return fmt.Sprintf("%s - %s", since.Format("Jan 2 15:04"), now.Format("Jan 2 15:04"))
+	return fmt.Sprintf("%s - %s", since.Format("Jan 2 3:04PM"), now.Format("Jan 2 3:04PM"))
 }

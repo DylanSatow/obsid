@@ -4,11 +4,18 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/DylanSatow/obsidian-cli/pkg/config"
 	"github.com/DylanSatow/obsidian-cli/pkg/git"
 )
 
 func FormatProjectEntry(repo *git.Repository, commits []git.Commit, files []string, timeRange string) string {
 	var sb strings.Builder
+
+	// Add tags line with default tag prefix
+	tagsLine := buildTagsLine(repo.Name)
+	if tagsLine != "" {
+		sb.WriteString(fmt.Sprintf("**Tags:** %s\n", tagsLine))
+	}
 
 	// Clean, focused work log format
 	sb.WriteString(fmt.Sprintf("**%s** • %s", timeRange, formatWorkSummary(commits, files)))
@@ -35,8 +42,8 @@ func FormatProjectEntry(repo *git.Repository, commits []git.Commit, files []stri
 		}
 	}
 
-	// Simple tag
-	sb.WriteString(fmt.Sprintf("#%s\n\n", cleanProjectName(repo.Name)))
+	// Separator line
+	sb.WriteString("---\n\n")
 
 	return sb.String()
 }
@@ -286,6 +293,34 @@ func getFileExtension(file string) string {
 		}
 	}
 	return ""
+}
+
+// buildTagsLine creates the tags line with default tag prefix
+func buildTagsLine(projectName string) string {
+	if config.GlobalConfig == nil {
+		return fmt.Sprintf("#%s", cleanProjectName(projectName))
+	}
+
+	var tags []string
+	
+	// Get the configured default tags
+	defaultTags := config.GlobalConfig.Formatting.AddTags
+	
+	// If we have default tags configured, use the first one as the prefix
+	if len(defaultTags) > 0 {
+		defaultTag := defaultTags[0]
+		// Remove # if it exists to normalize
+		if strings.HasPrefix(defaultTag, "#") {
+			defaultTag = defaultTag[1:]
+		}
+		// Create the prefixed tag
+		tags = append(tags, fmt.Sprintf("#%s/%s", defaultTag, cleanProjectName(projectName)))
+	} else {
+		// Fallback to just the project name tag
+		tags = append(tags, fmt.Sprintf("#%s", cleanProjectName(projectName)))
+	}
+	
+	return strings.Join(tags, " ")
 }
 
 // cleanProjectName creates a clean tag from project name
