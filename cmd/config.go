@@ -31,7 +31,7 @@ func init() {
 }
 
 func runConfig(cmd *cobra.Command, args []string) error {
-	fmt.Printf("📍 Configuration file: %s\n\n", config.GetConfigPath())
+	fmt.Printf("Configuration file: %s\n\n", config.GetConfigPath())
 	
 	// Show the actual loaded configuration
 	if config.GlobalConfig == nil {
