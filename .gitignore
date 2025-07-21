@@ -4,3 +4,5 @@ CLAUDE.md
 obsidian-cli
 SPEC.md
 test_projects
+# Added by goreleaser init:
+dist/
