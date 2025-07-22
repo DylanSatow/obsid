@@ -29,7 +29,7 @@ obsid init --vault ~/Obsidian/Main
 
 ## Example Note
 
-![alt text](https://github.com/DylanSatow/obsid/assets/example_note.png "Example note")
+![alt text](https://github.com/DylanSatow/obsid/blob/main/assets/example_note.png "Logo Title Text 1")
 
 ## Usage
 
