@@ -27,6 +27,10 @@ Quick setup:
 obsid init --vault ~/Obsidian/Main
 ```
 
+## Example Note
+
+![alt text](https://github.com/DylanSatow/obsid/assets/example_note.png "Example note")
+
 ## Usage
 
 Log all discovered projects:
